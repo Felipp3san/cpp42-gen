@@ -1,18 +1,52 @@
 #!/bin/bash
 
+BUILD_DIR=.
+
+# Handle -re flag
+if [ "$1" = "-re" ]
+then
+	for i in $@
+	do
+		if [ "$i" == "-d" ]
+		then
+			echo "Wrong usage of flags. -re should come after -d"
+			echo "./cppgen.sh -d <dest_path> -re ..."
+			exit 1
+		fi
+	done
+fi
+
+# Handle -d (output directory)
+if [ "$1" = "-d" ]
+then
+	# Skip first argument (-d)
+	shift
+	if [ -d "$1" ]
+	then
+		BUILD_DIR=${1%/}
+		# Skip dest path
+		shift
+	else
+		mkdir -p "$1" || { echo "Failed to create directory"; exit 1; }
+		BUILD_DIR=${1%/}
+		# Skip dest path
+		shift
+	fi
+fi
+
 # Handle -re flag
 if [ "$1" = "-re" ]
 then
 	# Delete known files
-	rm -f Makefile main.cpp
+	rm -f ${BUILD_DIR}/Makefile ${BUILD_DIR}/main.cpp
 
 	# Skip first argument (-re)
 	shift
 
 	for i in $@
 	do
-		CLASS_NAME=${i^}
-		rm -f ${CLASS_NAME}.cpp ${CLASS_NAME}.hpp
+		FILE_NAME=${BUILD_DIR}/${i^}
+		rm -f ${FILE_NAME}.cpp ${FILE_NAME}.hpp
 	done
 fi
 
@@ -20,6 +54,7 @@ fi
 if [[ "$#" -eq "0" ]] # Argument count equals 0
 then
 	echo "Usage: ./cppgen <ClassName> [ClassName2, ...]"
+	echo "Usage: ./cppgen <Directory> <ClassName> [ClassName2, ...]"
 	echo "No arguments were specified. Exiting..."
 	exit 1
 fi
@@ -39,9 +74,9 @@ do
 done
 
 # Create the Makefile if it not exists
-if [ ! -f "./Makefile" ]
+if [ ! -f "${BUILD_DIR}/Makefile" ]
 then
-cat > Makefile << EOF
+cat > ${BUILD_DIR}/Makefile << EOF
 CC			:= c++
 CFLAGS		:= -Wall -Wextra -Werror -std=c++98
 
@@ -71,16 +106,16 @@ re: fclean all
 
 .PHONY: all clean fclean re
 EOF
-	echo "Makefile created!"
+	echo "${BUILD_DIR}/Makefile created!"
 else
-	echo "Makefile already exists."
+	echo "${BUILD_DIR}/Makefile already exists."
 fi
 
 
 # Create main.cpp file
-if [ ! -f "main.cpp" ]
+if [ ! -f "${BUILD_DIR}/main.cpp" ]
 then
-cat > main.cpp << EOF
+cat > ${BUILD_DIR}/main.cpp << EOF
 
 #include <iostream>
 
@@ -89,9 +124,9 @@ int	main(void)
 	return (0);
 }
 EOF
-	echo "main.cpp created!"
+	echo "${BUILD_DIR}/main.cpp created!"
 else
-	echo "main.cpp already exists."
+	echo "${BUILD_DIR}/main.cpp already exists."
 fi
 
 
@@ -101,9 +136,9 @@ do
 	CLASS_NAME=${i^}
 
 	# .cpp file
-	if [ ! -f "./${CLASS_NAME}.cpp" ]
+	if [ ! -f "${BUILD_DIR}/${CLASS_NAME}.cpp" ]
 	then
-cat > ${CLASS_NAME}.cpp << EOF
+cat > ${BUILD_DIR}/${CLASS_NAME}.cpp << EOF
 
 #include "${CLASS_NAME}.hpp"
 #include <iostream>
@@ -135,15 +170,15 @@ ${CLASS_NAME}	&${CLASS_NAME}::operator=(${CLASS_NAME} const &other)
 	return (*this);
 }
 EOF
-		echo "${CLASS_NAME}.cpp file created!"
+		echo "${BUILD_DIR}/${CLASS_NAME}.cpp file created!"
 	else
-		echo "${CLASS_NAME}.cpp already exists."
+		echo "${BUILD_DIR}/${CLASS_NAME}.cpp already exists."
 	fi
 
 	# .hpp file
-	if [ ! -f "./${CLASS_NAME}.hpp" ]
+	if [ ! -f "${BUILD_DIR}/${CLASS_NAME}.hpp" ]
 	then
-cat > ${CLASS_NAME}.hpp << EOF
+cat > ${BUILD_DIR}/${CLASS_NAME}.hpp << EOF
 
 #ifndef ${CLASS_NAME^^}_HPP
 # define ${CLASS_NAME^^}_HPP
@@ -162,9 +197,9 @@ public:
 
 #endif
 EOF
-		echo "${CLASS_NAME}.hpp file created!"
+		echo "${BUILD_DIR}/${CLASS_NAME}.hpp file created!"
 	else
-		echo "${CLASS_NAME}.hpp already exists."
+		echo "${BUILD_DIR}/${CLASS_NAME}.hpp already exists."
 	fi
 
 done
